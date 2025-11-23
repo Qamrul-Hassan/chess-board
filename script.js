@@ -1,79 +1,95 @@
 
-import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm";
+    import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm";
 
-// initialize chess logic
-const chess = new Chess();
-const board = document.querySelector(".chess-board");
+    const chess = new Chess();
+    const board = document.querySelector(".board");
+    const squares = Array.from(board.children);
 
-let selectedSquare = null;
+    const whiteCapturedDiv = document.querySelector(".white-captured");
+    const blackCapturedDiv = document.querySelector(".black-captured");
 
-// Get all board squares (your HTML divs)
-const squares = Array.from(board.children);
+    let selectedSquare = null;
 
-// Helper to get chess notation (a1, b2, etc.) from index
-function indexToSquare(index) {
-  const row = Math.floor(index / 8);
-  const col = index % 8;
-  const file = "abcdefgh"[col];
-  const rank = 8 - row;
-  return `${file}${rank}`;
-}
-
-// Render board pieces based on current chess state
-function renderBoard() {
-  const boardState = chess.board().flat();
-  squares.forEach((square, i) => {
-    square.innerHTML = ""; // clear old pieces
-    const piece = boardState[i];
-    if (piece) {
-      const color = piece.color === "w" ? "white" : "black";
-      const type = {
-        p: "pawn",
-        r: "rook",
-        n: "knight",
-        b: "bishop",
-        q: "queen",
-        k: "king"
-      }[piece.type];
-
-      const img = document.createElement("img");
-      img.src = `./images/${color}-${type}.png`;
-      img.alt = `${color} ${type}`;
-      img.draggable = false;
-      square.appendChild(img);
+    function indexToSquare(index) {
+      const row = Math.floor(index / 8);
+      const col = index % 8;
+      const file = "abcdefgh"[col];
+      const rank = 8 - row;
+      return `${file}${rank}`;
     }
-  });
-}
 
-// Handle clicking on squares
-function handleClick(index) {
-  const squareName = indexToSquare(index);
+    function renderBoard() {
+      const boardState = chess.board();
 
-  if (!selectedSquare) {
-    // select a square if it has a piece of the current player's turn
-    const piece = chess.get(squareName);
-    if (piece && piece.color === chess.turn()) {
-      selectedSquare = squareName;
-      squares[index].style.outline = "3px solid yellow";
+      // Clear board
+      squares.forEach((square, i) => {
+        square.innerHTML = "";
+        const row = Math.floor(i / 8);
+        const col = i % 8;
+        const piece = boardState[row][col];
+
+        if (piece) {
+          const color = piece.color === "w" ? "white" : "black";
+          const typeMap = { p: "pawn", r: "rook", n: "knight", b: "bishop", q: "queen", k: "king" };
+          const type = typeMap[piece.type];
+
+          const img = document.createElement("img");
+          img.src = `./Images/${color}-${type}.png`;
+          img.alt = `${color} ${type}`;
+          img.draggable = false;
+          square.appendChild(img);
+        }
+      });
+
+      // Reset captured areas
+      whiteCapturedDiv.innerHTML = "";
+      blackCapturedDiv.innerHTML = "";
+
+      // Track captured pieces
+      const history = chess.history({ verbose: true });
+      const whiteCaptured = [];
+      const blackCaptured = [];
+
+      history.forEach(move => {
+        if (move.captured) {
+          const colorCaptured = move.captured === move.color ? move.color : (move.color === "w" ? "b" : "w");
+          const typeMap = { p: "pawn", r: "rook", n: "knight", b: "bishop", q: "queen", k: "king" };
+          const img = document.createElement("img");
+          img.src = `./Images/${colorCaptured === "w" ? "white" : "black"}-${typeMap[move.captured]}.png`;
+          img.alt = `${colorCaptured} ${move.captured}`;
+
+          if (colorCaptured === "w") whiteCaptured.push(img);
+          else blackCaptured.push(img);
+        }
+      });
+
+      whiteCaptured.forEach(img => whiteCapturedDiv.appendChild(img));
+      blackCaptured.forEach(img => blackCapturedDiv.appendChild(img));
     }
-  } else {
-    // attempt move
-    const move = chess.move({ from: selectedSquare, to: squareName });
-    squares.forEach(sq => (sq.style.outline = ""));
-    selectedSquare = null;
 
-    if (move) {
-      renderBoard();
-      if (chess.isCheckmate()) alert("Checkmate! Game Over.");
-      else if (chess.isDraw()) alert("Draw!");
+    function handleClick(index) {
+      const squareName = indexToSquare(index);
+      squares.forEach(sq => sq.style.outline = "");
+
+      if (!selectedSquare) {
+        const piece = chess.get(squareName);
+        if (piece && piece.color === chess.turn()) {
+          selectedSquare = squareName;
+          squares[index].style.outline = "3px solid yellow";
+        }
+      } else {
+        const move = chess.move({ from: selectedSquare, to: squareName, promotion: "q" });
+        selectedSquare = null;
+        if (move) renderBoard();
+
+        if (chess.isCheckmate()) alert("Checkmate! Game Over.");
+        else if (chess.isDraw()) alert("Draw!");
+      }
     }
-  }
-}
 
-// Add click listeners
-squares.forEach((square, index) => {
-  square.addEventListener("click", () => handleClick(index));
-});
+    squares.forEach((square, index) => {
+      square.addEventListener("click", () => handleClick(index));
+    });
 
-// Initial render
-renderBoard();
+    renderBoard();
+  

@@ -1,35 +1,66 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
 body {
     display: flex;
+    flex-direction: column; /* so captured pieces can be on top/bottom */
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    background-color: #f0f0f0;
-  }
+    height: 100vh;
+    background:rgba(0, 128, 0, 0.432);
+}
 
-  .chess-board {
-    display: grid;
-    grid-template-columns: repeat(8, 100px);
-    grid-template-rows: repeat(8, 100px);
-    border: 4px solid #333;
-  }
+.board {
+    display: flex;
+    flex-wrap: wrap;
+    width: 630px;
+    height: 630px;
+    border: 10px solid rgba(0, 128, 0, 0.348);
+    border-radius: 10px;
+    -webkit-border-radius: 10px;
+    -moz-border-radius: 10px;
+    -ms-border-radius: 10px;
+    -o-border-radius: 10px;
+}
 
-  .chess-board div {
-    width: 100px;
-    height: 100px;
+.board div {
+    width: 78.7px;
+    height: 78.7px;
     display: flex;
     justify-content: center;
     align-items: center;
-  }
+}
 
-  .white {
-    background-color: #eee;
-  }
+.dark {
+    background: #769655;
+}
 
-  .black {
-    background-color: #666;
-  }
+.light {
+    background: #EEEED2;
+}
 
-  .chess-board img {
-    width: 100px;
-    height: 100px;
-  }
+.board img {
+    width: 80px;
+    height: 80px;
+}
+
+/* Captured pieces containers */
+.captured {
+    display: flex;
+    flex-wrap: wrap;
+    width: 680px;
+    min-height: 60px;
+    margin: 1px 0;
+    padding: 5px;
+    border: 2px solid rgba(128, 128, 128, 0.3);
+    border-radius: 8px;
+    background: rgba(172, 255, 47, 0.39);
+}
+
+.captured img {
+    width: 55px;
+    height: 55px;
+    margin: 8px;
+}
