@@ -34,7 +34,7 @@
           const type = typeMap[piece.type];
 
           const img = document.createElement("img");
-          img.src = `./Images/${color}-${type}.png`;
+          img.src = `./images/${color}-${type}.png`;
           img.alt = `${color} ${type}`;
           img.draggable = false;
           square.appendChild(img);
@@ -55,7 +55,7 @@
           const colorCaptured = move.captured === move.color ? move.color : (move.color === "w" ? "b" : "w");
           const typeMap = { p: "pawn", r: "rook", n: "knight", b: "bishop", q: "queen", k: "king" };
           const img = document.createElement("img");
-          img.src = `./Images/${colorCaptured === "w" ? "white" : "black"}-${typeMap[move.captured]}.png`;
+          img.src = `./images/${colorCaptured === "w" ? "white" : "black"}-${typeMap[move.captured]}.png`;
           img.alt = `${colorCaptured} ${move.captured}`;
 
           if (colorCaptured === "w") whiteCaptured.push(img);
