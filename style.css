@@ -19,10 +19,7 @@ body {
     height: 630px;
     border: 10px solid rgba(0, 128, 0, 0.348);
     border-radius: 10px;
-    -webkit-border-radius: 10px;
-    -moz-border-radius: 10px;
-    -ms-border-radius: 10px;
-    -o-border-radius: 10px;
+   
 }
 
 .board div {
