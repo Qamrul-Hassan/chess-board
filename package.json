@@ -1,0 +1,14 @@
+{
+  "name": "chess-board-online",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "chess.js": "^1.0.0",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}

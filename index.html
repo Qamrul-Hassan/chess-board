@@ -135,9 +135,44 @@
         <!-- Captured pieces by White (Black pieces) -->
         <div class="captured black-captured"></div>
       </div>
+
+      <aside class="right-panel">
+        <h2 class="panel-title">Online</h2>
+        <div class="online-controls">
+          <button id="hostBtn" class="btn ghost">Host Online</button>
+          <input id="roomInput" type="text" placeholder="Room code">
+          <label class="spectate">
+            <input id="spectateToggle" type="checkbox">
+            Spectate
+          </label>
+          <button id="joinBtn" class="btn ghost">Join</button>
+          <div id="roomInfo" class="room-info"></div>
+          <button id="helpBtn" class="btn ghost">How to Play Online</button>
+        </div>
+      </aside>
     </section>
   </main>
 
+  <div id="helpModal" class="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-header">
+        <h2 id="helpTitle">Online Play Instructions</h2>
+        <button id="closeHelp" class="btn ghost">Close</button>
+      </div>
+      <ol class="modal-list">
+        <li>Open the page on two devices or two browser tabs.</li>
+        <li>Click <strong>Host Online</strong> on the host device to create a room.</li>
+        <li>Copy the room code and send it to your friend.</li>
+        <li>Your friend enters the code and clicks <strong>Join</strong>.</li>
+        <li>The host will get a pop‑up request — click OK to approve.</li>
+        <li>Host clicks <strong>Start</strong> to begin the game.</li>
+        <li>Want to watch only? Tick <strong>Spectate</strong> before joining.</li>
+      </ol>
+      <p class="modal-note">Tip: Keep the host page open to keep the room alive.</p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
   <script type="module" src="./script.js"></script>
 </body>
 

@@ -14,6 +14,14 @@ const resetBtn = document.querySelector("#resetBtn");
 const timeSelect = document.querySelector("#timeSelect");
 const whiteCard = document.querySelector(".player-card.white");
 const blackCard = document.querySelector(".player-card.black");
+const hostBtn = document.querySelector("#hostBtn");
+const joinBtn = document.querySelector("#joinBtn");
+const roomInput = document.querySelector("#roomInput");
+const spectateToggle = document.querySelector("#spectateToggle");
+const roomInfo = document.querySelector("#roomInfo");
+const helpBtn = document.querySelector("#helpBtn");
+const helpModal = document.querySelector("#helpModal");
+const closeHelp = document.querySelector("#closeHelp");
 
 let selectedSquare = null;
 let lastMove = null;
@@ -22,6 +30,12 @@ let timerId = null;
 let whiteTime = 300;
 let blackTime = 300;
 let audioContext = null;
+let onlineMode = false;
+let roomId = null;
+let role = "local";
+let isHost = false;
+const socket = window.io ? window.io() : null;
+let lastRemoteMoveKey = null;
 
 const typeMap = { p: "pawn", r: "rook", n: "knight", b: "bishop", q: "queen", k: "king" };
 
@@ -54,6 +68,56 @@ function setClocks() {
 
 function updateStatus(message) {
   statusEl.textContent = message;
+}
+
+function setRoomInfo(text) {
+  roomInfo.textContent = text || "";
+}
+
+function setRole(nextRole, nextRoomId, hostFlag) {
+  role = nextRole;
+  roomId = nextRoomId || roomId;
+  isHost = Boolean(hostFlag);
+  onlineMode = role !== "local";
+  if (onlineMode) {
+    const roleLabel = role[0].toUpperCase() + role.slice(1);
+    setRoomInfo(`Room ${roomId} • ${roleLabel}`);
+    startBtn.disabled = !isHost;
+    resetBtn.disabled = !isHost;
+    timeSelect.disabled = !isHost;
+    stopTimer();
+  } else {
+    setRoomInfo("");
+    startBtn.disabled = false;
+    resetBtn.disabled = false;
+    timeSelect.disabled = false;
+  }
+}
+
+function applyRemoteState(state) {
+  if (!state) return;
+  const moveKey = state.lastMove
+    ? `${state.lastMove.from}${state.lastMove.to}${state.lastMove.piece || ""}${state.lastMove.captured || ""}`
+    : null;
+  const isNewMove = moveKey && moveKey !== lastRemoteMoveKey;
+  lastRemoteMoveKey = moveKey;
+  if (state.baseTime) {
+    const option = Array.from(timeSelect.options).find(opt => Number(opt.value) === Number(state.baseTime));
+    if (option) timeSelect.value = option.value;
+  }
+  chess.load(state.fen);
+  whiteTime = state.whiteTime;
+  blackTime = state.blackTime;
+  gameActive = state.running;
+  lastMove = state.lastMove || null;
+  if (onlineMode) timeSelect.disabled = !isHost || state.running;
+  setClocks();
+  renderBoard();
+  if (isNewMove && state.lastMove?.captured) {
+    flashCaptureSquare(squareToIndex(state.lastMove.to));
+    playCaptureSound();
+  }
+  updateTurnStatus({ skipTimer: true, external: state });
 }
 
 function clearHighlights() {
@@ -161,6 +225,7 @@ function highlightMoves(fromSquare) {
 }
 
 function startTimer() {
+  if (onlineMode) return;
   if (timerId) return;
   timerId = setInterval(() => {
     if (!gameActive) return;
@@ -195,14 +260,15 @@ function endByTime(player) {
   updateStatus(`${player} ran out of time. Game over.`);
 }
 
-function updateTurnStatus() {
+function updateTurnStatus(options = {}) {
+  const { skipTimer = false, external } = options;
   if (chess.isCheckmate()) {
     const winner = chess.turn() === "w" ? "Black" : "White";
     updateStatus(`Checkmate. ${winner} wins.`);
     gameActive = false;
     whiteCard.classList.remove("active");
     blackCard.classList.remove("active");
-    stopTimer();
+    if (!skipTimer) stopTimer();
     return;
   }
   if (chess.isDraw()) {
@@ -210,12 +276,18 @@ function updateTurnStatus() {
     gameActive = false;
     whiteCard.classList.remove("active");
     blackCard.classList.remove("active");
-    stopTimer();
+    if (!skipTimer) stopTimer();
     return;
   }
   const side = chess.turn() === "w" ? "White" : "Black";
   const suffix = chess.isCheck() ? " - Check" : "";
-  updateStatus(`${side} to move${suffix}`);
+  if (external && external.players && (!external.players.white || !external.players.black)) {
+    updateStatus("Waiting for opponent to join...");
+  } else if (external && !external.running) {
+    updateStatus(isHost ? "Waiting to start..." : "Waiting for host to start...");
+  } else {
+    updateStatus(`${side} to move${suffix}`);
+  }
   whiteCard.classList.toggle("active", chess.turn() === "w");
   blackCard.classList.toggle("active", chess.turn() === "b");
 }
@@ -226,10 +298,18 @@ function handleClick(index) {
 
   if (!selectedSquare) {
     const piece = chess.get(squareName);
-    if (piece && piece.color === chess.turn()) {
+    const playerColor = role === "white" ? "w" : role === "black" ? "b" : null;
+    if (piece && piece.color === chess.turn() && (!onlineMode || piece.color === playerColor)) {
       selectedSquare = squareName;
       highlightMoves(squareName);
     }
+    return;
+  }
+
+  if (onlineMode) {
+    socket?.emit("make-move", { roomId, from: selectedSquare, to: squareName, promotion: "q" });
+    selectedSquare = null;
+    clearHighlights();
     return;
   }
 
@@ -248,6 +328,10 @@ function handleClick(index) {
 }
 
 function resetGame() {
+  if (onlineMode) {
+    if (isHost) socket?.emit("reset-game", { roomId });
+    return;
+  }
   chess.reset();
   selectedSquare = null;
   lastMove = null;
@@ -264,6 +348,10 @@ function resetGame() {
 }
 
 startBtn.addEventListener("click", () => {
+  if (onlineMode) {
+    if (isHost) socket?.emit("start-game", { roomId });
+    return;
+  }
   if (!gameActive) {
     gameActive = true;
     updateTurnStatus();
@@ -274,6 +362,12 @@ startBtn.addEventListener("click", () => {
 resetBtn.addEventListener("click", resetGame);
 
 timeSelect.addEventListener("change", () => {
+  if (onlineMode) {
+    if (isHost && !gameActive) {
+      socket?.emit("set-time", { roomId, baseTime: Number(timeSelect.value) });
+    }
+    return;
+  }
   if (!gameActive) {
     const base = Number(timeSelect.value);
     whiteTime = base;
@@ -282,8 +376,88 @@ timeSelect.addEventListener("change", () => {
   }
 });
 
+if (!socket) {
+  hostBtn.disabled = true;
+  joinBtn.disabled = true;
+  setRoomInfo("Online disabled (run with server)");
+} else {
+  hostBtn.addEventListener("click", () => {
+    socket.emit("host-room", { baseTime: Number(timeSelect.value) });
+  });
+
+  joinBtn.addEventListener("click", () => {
+    const code = roomInput.value.trim().toUpperCase();
+    if (!code) {
+      updateStatus("Enter a room code to join.");
+      return;
+    }
+    socket.emit("request-join", { roomId: code, spectator: Boolean(spectateToggle.checked) });
+  });
+
+  socket.on("room-created", ({ roomId: id, role: roomRole, state }) => {
+    setRole(roomRole, id, true);
+    roomInput.value = id;
+    applyRemoteState(state);
+  });
+
+  socket.on("room-joined", ({ roomId: id, role: roomRole, state }) => {
+    setRole(roomRole, id, false);
+    applyRemoteState(state);
+  });
+
+  socket.on("room-state", ({ state }) => {
+    applyRemoteState(state);
+  });
+
+  socket.on("join-request", ({ requesterId, spectator }) => {
+    if (!isHost) return;
+    const label = spectator ? "spectator" : "player";
+    const approve = window.confirm(`Join request (${label}). Allow?`);
+    if (approve) socket.emit("approve-join", { roomId, requesterId });
+    else socket.emit("deny-join", { roomId, requesterId });
+  });
+
+  socket.on("join-denied", ({ reason }) => {
+    updateStatus(reason || "Join denied.");
+  });
+
+  socket.on("error-message", ({ message }) => {
+    updateStatus(message || "Server error.");
+  });
+
+  socket.on("game-over", ({ reason }) => {
+    updateStatus(reason || "Game over.");
+    gameActive = false;
+    whiteCard.classList.remove("active");
+    blackCard.classList.remove("active");
+  });
+
+  socket.on("room-closed", () => {
+    updateStatus("Host left. Room closed.");
+    setRole("local");
+    resetGame();
+  });
+}
+
 squares.forEach((square, index) => {
   square.addEventListener("click", () => handleClick(index));
+});
+
+helpBtn?.addEventListener("click", () => {
+  helpModal?.classList.add("open");
+  helpModal?.setAttribute("aria-hidden", "false");
+});
+
+closeHelp?.addEventListener("click", () => {
+  helpModal?.classList.remove("open");
+  helpModal?.setAttribute("aria-hidden", "true");
+});
+
+helpModal?.addEventListener("click", event => {
+  if (event.target === helpModal) {
+    helpModal.classList.remove("open");
+    helpModal.setAttribute("aria-hidden", "true");
+  }
 });
 
 resetGame();
