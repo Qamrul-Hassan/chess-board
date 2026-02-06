@@ -34,7 +34,8 @@ let onlineMode = false;
 let roomId = null;
 let role = "local";
 let isHost = false;
-const socket = window.io ? window.io() : null;
+const socketServerUrl = window.SOCKET_SERVER_URL || "";
+const socket = window.io ? window.io(socketServerUrl || undefined) : null;
 let lastRemoteMoveKey = null;
 
 const typeMap = { p: "pawn", r: "rook", n: "knight", b: "bishop", q: "queen", k: "king" };
