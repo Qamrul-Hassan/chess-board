@@ -36,12 +36,21 @@ function buildState(room) {
     players: {
       white: Boolean(room.players.white),
       black: Boolean(room.players.black)
-    }
+    },
+    spectatorsCount: room.spectators.size,
+    moves: room.moves
   };
 }
 
 function broadcastState(room) {
   io.to(room.id).emit("room-state", { state: buildState(room) });
+}
+
+function emitPresence(room) {
+  io.to(room.hostId).emit("presence", {
+    state: buildState(room),
+    spectators: Array.from(room.spectators)
+  });
 }
 
 function stopRoomTimer(room) {
@@ -83,7 +92,8 @@ function createRoom(hostSocket, baseTime) {
     blackTime: baseTime,
     running: false,
     lastMove: null,
-    timerId: null
+    timerId: null,
+    moves: []
   };
   rooms.set(id, room);
   hostSocket.join(id);
@@ -101,6 +111,7 @@ io.on("connection", socket => {
   socket.on("host-room", ({ baseTime }) => {
     const room = createRoom(socket, Number(baseTime) || 300);
     socket.emit("room-created", { roomId: room.id, role: "white", state: buildState(room) });
+    emitPresence(room);
   });
 
   socket.on("request-join", ({ roomId, spectator }) => {
@@ -127,6 +138,7 @@ io.on("connection", socket => {
       target.join(room.id);
       target.emit("room-joined", { roomId: room.id, role: "spectator", state: buildState(room) });
       broadcastState(room);
+      emitPresence(room);
       return;
     }
 
@@ -135,6 +147,7 @@ io.on("connection", socket => {
       target.join(room.id);
       target.emit("room-joined", { roomId: room.id, role: "black", state: buildState(room) });
       broadcastState(room);
+      emitPresence(room);
       return;
     }
 
@@ -155,6 +168,7 @@ io.on("connection", socket => {
     room.whiteTime = room.baseTime;
     room.blackTime = room.baseTime;
     broadcastState(room);
+    emitPresence(room);
   });
 
   socket.on("start-game", ({ roomId }) => {
@@ -167,6 +181,7 @@ io.on("connection", socket => {
     room.running = true;
     startRoomTimer(room);
     broadcastState(room);
+    emitPresence(room);
   });
 
   socket.on("reset-game", ({ roomId }) => {
@@ -177,8 +192,10 @@ io.on("connection", socket => {
     room.blackTime = room.baseTime;
     room.running = false;
     room.lastMove = null;
+    room.moves = [];
     stopRoomTimer(room);
     broadcastState(room);
+    emitPresence(room);
   });
 
   socket.on("make-move", ({ roomId, from, to, promotion }) => {
@@ -199,9 +216,18 @@ io.on("connection", socket => {
       from: move.from,
       to: move.to,
       piece: move.piece,
-      captured: move.captured || null
+      captured: move.captured || null,
+      color: move.color
     };
+    room.moves.push({
+      from: move.from,
+      to: move.to,
+      piece: move.piece,
+      captured: move.captured || null,
+      color: move.color
+    });
     broadcastState(room);
+    emitPresence(room);
 
     if (room.chess.isCheckmate()) {
       room.running = false;
@@ -212,6 +238,41 @@ io.on("connection", socket => {
       stopRoomTimer(room);
       io.to(room.id).emit("game-over", { reason: "Draw." });
     }
+  });
+
+  socket.on("kick-player", ({ roomId, color }) => {
+    const room = rooms.get(roomId);
+    if (!room || room.hostId !== socket.id) return;
+    const targetId = color === "black" ? room.players.black : room.players.white;
+    if (!targetId || targetId === room.hostId) return;
+    io.to(targetId).emit("kicked", { reason: "You were removed by the host." });
+    if (color === "black") room.players.black = null;
+    if (color === "white") room.players.white = null;
+    room.running = false;
+    stopRoomTimer(room);
+    broadcastState(room);
+    emitPresence(room);
+  });
+
+  socket.on("kick-spectators", ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room || room.hostId !== socket.id) return;
+    for (const spectatorId of room.spectators) {
+      io.to(spectatorId).emit("kicked", { reason: "Spectator removed by host." });
+    }
+    room.spectators.clear();
+    emitPresence(room);
+    broadcastState(room);
+  });
+
+  socket.on("kick-spectator", ({ roomId, spectatorId }) => {
+    const room = rooms.get(roomId);
+    if (!room || room.hostId !== socket.id) return;
+    if (!room.spectators.has(spectatorId)) return;
+    io.to(spectatorId).emit("kicked", { reason: "Spectator removed by host." });
+    room.spectators.delete(spectatorId);
+    emitPresence(room);
+    broadcastState(room);
   });
 
   socket.on("disconnect", () => {
@@ -229,6 +290,7 @@ io.on("connection", socket => {
       room.running = false;
       stopRoomTimer(room);
       broadcastState(room);
+      emitPresence(room);
     }
   });
 });

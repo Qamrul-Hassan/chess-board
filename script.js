@@ -22,6 +22,12 @@ const roomInfo = document.querySelector("#roomInfo");
 const helpBtn = document.querySelector("#helpBtn");
 const helpModal = document.querySelector("#helpModal");
 const closeHelp = document.querySelector("#closeHelp");
+const presenceEl = document.querySelector("#presence");
+const playersCountEl = document.querySelector("#playersCount");
+const spectatorsCountEl = document.querySelector("#spectatorsCount");
+const spectatorListEl = document.querySelector("#spectatorList");
+const kickBlackBtn = document.querySelector("#kickBlackBtn");
+const kickSpectatorsBtn = document.querySelector("#kickSpectatorsBtn");
 
 let selectedSquare = null;
 let lastMove = null;
@@ -37,6 +43,7 @@ let isHost = false;
 const socketServerUrl = window.SOCKET_SERVER_URL || "";
 const socket = window.io ? window.io(socketServerUrl || undefined) : null;
 let lastRemoteMoveKey = null;
+let remoteMoves = null;
 
 const typeMap = { p: "pawn", r: "rook", n: "knight", b: "bishop", q: "queen", k: "king" };
 
@@ -75,6 +82,39 @@ function setRoomInfo(text) {
   roomInfo.textContent = text || "";
 }
 
+function setPresenceVisibility(show) {
+  if (!presenceEl) return;
+  presenceEl.style.display = show ? "grid" : "none";
+}
+
+function renderPresence(data) {
+  if (!playersCountEl || !spectatorsCountEl) return;
+  const players = data?.players || { white: false, black: false };
+  const playerCount = Number(Boolean(players.white)) + Number(Boolean(players.black));
+  playersCountEl.textContent = `Players: ${playerCount}/2`;
+  spectatorsCountEl.textContent = `Spectators: ${data?.spectatorsCount ?? 0}`;
+
+  if (!spectatorListEl) return;
+  spectatorListEl.innerHTML = "";
+  if (isHost && Array.isArray(data?.spectators)) {
+    data.spectators.forEach((spectator, index) => {
+      const row = document.createElement("div");
+      row.className = "spectator-item";
+      const label = document.createElement("span");
+      label.textContent = `Spectator ${index + 1}`;
+      const btn = document.createElement("button");
+      btn.className = "btn ghost";
+      btn.textContent = "Kick";
+      btn.addEventListener("click", () => {
+        socket?.emit("kick-spectator", { roomId, spectatorId: spectator });
+      });
+      row.appendChild(label);
+      row.appendChild(btn);
+      spectatorListEl.appendChild(row);
+    });
+  }
+}
+
 function setRole(nextRole, nextRoomId, hostFlag) {
   role = nextRole;
   roomId = nextRoomId || roomId;
@@ -87,11 +127,14 @@ function setRole(nextRole, nextRoomId, hostFlag) {
     resetBtn.disabled = !isHost;
     timeSelect.disabled = !isHost;
     stopTimer();
+    setPresenceVisibility(true);
   } else {
     setRoomInfo("");
     startBtn.disabled = false;
     resetBtn.disabled = false;
     timeSelect.disabled = false;
+    setPresenceVisibility(false);
+    renderPresence(null);
   }
 }
 
@@ -102,6 +145,7 @@ function applyRemoteState(state) {
     : null;
   const isNewMove = moveKey && moveKey !== lastRemoteMoveKey;
   lastRemoteMoveKey = moveKey;
+  remoteMoves = Array.isArray(state.moves) ? state.moves : null;
   if (state.baseTime) {
     const option = Array.from(timeSelect.options).find(opt => Number(opt.value) === Number(state.baseTime));
     if (option) timeSelect.value = option.value;
@@ -118,6 +162,7 @@ function applyRemoteState(state) {
     flashCaptureSquare(squareToIndex(state.lastMove.to));
     playCaptureSound();
   }
+  renderPresence(state);
   updateTurnStatus({ skipTimer: true, external: state });
 }
 
@@ -152,11 +197,13 @@ function renderBoard() {
   whiteCapturedDiv.innerHTML = "";
   blackCapturedDiv.innerHTML = "";
 
-  const history = chess.history({ verbose: true });
+  const capturedSource = onlineMode && Array.isArray(remoteMoves)
+    ? remoteMoves
+    : chess.history({ verbose: true });
   const whiteCaptured = [];
   const blackCaptured = [];
 
-  history.forEach(move => {
+  capturedSource.forEach(move => {
     if (!move.captured) return;
     const colorCaptured = move.color === "w" ? "b" : "w";
     const img = document.createElement("img");
@@ -381,6 +428,7 @@ if (!socket) {
   hostBtn.disabled = true;
   joinBtn.disabled = true;
   setRoomInfo("Online disabled (run with server)");
+  setPresenceVisibility(false);
 } else {
   hostBtn.addEventListener("click", () => {
     socket.emit("host-room", { baseTime: Number(timeSelect.value) });
@@ -438,10 +486,29 @@ if (!socket) {
     setRole("local");
     resetGame();
   });
+
+  socket.on("presence", ({ state, spectators }) => {
+    if (!isHost) return;
+    renderPresence({ ...state, spectators });
+  });
+
+  socket.on("kicked", ({ reason }) => {
+    updateStatus(reason || "You were removed from the room.");
+    setRole("local");
+    resetGame();
+  });
 }
 
 squares.forEach((square, index) => {
   square.addEventListener("click", () => handleClick(index));
+});
+
+kickBlackBtn?.addEventListener("click", () => {
+  if (isHost && roomId) socket?.emit("kick-player", { roomId, color: "black" });
+});
+
+kickSpectatorsBtn?.addEventListener("click", () => {
+  if (isHost && roomId) socket?.emit("kick-spectators", { roomId });
 });
 
 helpBtn?.addEventListener("click", () => {

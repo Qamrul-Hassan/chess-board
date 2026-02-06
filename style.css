@@ -116,6 +116,48 @@ h1 {
     letter-spacing: 0.04em;
 }
 
+.presence {
+    display: grid;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.presence-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+}
+
+.presence-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--ink);
+}
+
+.spectator-list {
+    display: grid;
+    gap: 6px;
+}
+
+.spectator-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink);
+}
+
+.spectator-item button {
+    padding: 6px 10px;
+    font-size: 11px;
+}
+
 .time-control {
     display: flex;
     align-items: center;
