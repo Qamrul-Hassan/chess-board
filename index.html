@@ -31,18 +31,26 @@
     </header>
 
     <section class="arena">
-      <div class="clock-row">
-        <div class="player-card black">
+      <aside class="side-panel">
+        <div class="player-card black centered">
           <span class="label">Black</span>
           <span id="blackClock" class="clock">05:00</span>
         </div>
-        <div id="status" class="status">Press Start to begin</div>
-      </div>
+        <div class="mid-info">
+          <div id="status" class="status">Press Start to begin</div>
+          <div class="note">Local two-player. Start the clock, then move.</div>
+        </div>
+        <div class="player-card white centered">
+          <span class="label">White</span>
+          <span id="whiteClock" class="clock">05:00</span>
+        </div>
+      </aside>
 
-      <!-- Captured pieces by Black (White pieces) -->
-      <div class="captured white-captured"></div>
+      <div class="board-panel">
+        <!-- Captured pieces by Black (White pieces) -->
+        <div class="captured white-captured"></div>
 
-      <div class="board" aria-label="chess board">
+        <div class="board" aria-label="chess board">
         <!-- Row 1 - Black main pieces -->
         <div class="dark"><img src="./images/black-rook.png" alt="black-rook"></div>
         <div class="light"><img src="./images/black-knight.png" alt="black-knight"></div>
@@ -122,17 +130,10 @@
         <div class="dark"><img src="./images/white-bishop.png" alt="white-bishop"></div>
         <div class="light"><img src="./images/white-knight.png" alt="white-knight"></div>
         <div class="dark"><img src="./images/white-rook.png" alt="white-rook"></div>
-      </div>
-
-      <!-- Captured pieces by White (Black pieces) -->
-      <div class="captured black-captured"></div>
-
-      <div class="clock-row">
-        <div class="player-card white">
-          <span class="label">White</span>
-          <span id="whiteClock" class="clock">05:00</span>
         </div>
-        <div class="note">Local two-player. Start the clock, then move.</div>
+
+        <!-- Captured pieces by White (Black pieces) -->
+        <div class="captured black-captured"></div>
       </div>
     </section>
   </main>

@@ -30,13 +30,15 @@ body {
         linear-gradient(140deg, var(--bg-1), var(--bg-2));
     color: var(--ink);
     font-family: "IBM Plex Sans", system-ui, sans-serif;
-    padding: 36px 20px;
+    padding: 16px 16px;
+    overflow: hidden;
 }
 
 .stage {
     width: min(980px, 100%);
     display: grid;
-    gap: 24px;
+    gap: 14px;
+    max-height: calc(100vh - 32px);
 }
 
 .topbar {
@@ -44,7 +46,7 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    padding: 16px 22px;
+    padding: 12px 18px;
     background: var(--panel);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
@@ -63,7 +65,7 @@ h1 {
     font-size: clamp(24px, 3.2vw, 34px);
     font-weight: 700;
     color: var(--accent-strong);
-    margin-top: 6px;
+    margin-top: 4px;
 }
 
 .controls {
@@ -128,18 +130,26 @@ h1 {
 .arena {
     background: rgba(0, 0, 0, 0.35);
     border-radius: 24px;
-    padding: 26px;
+    padding: 16px;
     box-shadow: var(--shadow);
     border: 1px solid rgba(255, 255, 255, 0.08);
     display: grid;
+    grid-template-columns: 180px 1fr;
     gap: 16px;
+    align-items: center;
 }
 
-.clock-row {
+.side-panel {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     justify-content: space-between;
     gap: 16px;
+    min-height: 100%;
+}
+
+.mid-info {
+    display: grid;
+    gap: 6px;
 }
 
 .player-card {
@@ -151,6 +161,11 @@ h1 {
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(20, 24, 23, 0.8);
     min-width: 140px;
+}
+
+.player-card.centered {
+    align-items: center;
+    text-align: center;
 }
 
 .player-card.black {
@@ -173,7 +188,7 @@ h1 {
 }
 
 .clock {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     letter-spacing: 0.06em;
 }
@@ -181,20 +196,25 @@ h1 {
 .status {
     font-size: 14px;
     color: var(--muted);
-    text-align: right;
 }
 
 .note {
     font-size: 12px;
     color: var(--muted);
-    text-align: right;
+}
+
+.board-panel {
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+    width: min(66vh, 90vw);
 }
 
 .board {
     display: flex;
     flex-wrap: wrap;
-    width: min(720px, 90vw);
-    height: min(720px, 90vw);
+    width: min(66vh, 90vw);
+    height: min(66vh, 90vw);
     border: 16px solid #2e2217;
     border-radius: 18px;
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.1);
@@ -237,28 +257,65 @@ h1 {
     box-shadow: inset 0 0 0 4px rgba(227, 197, 124, 0.45);
 }
 
+.board div.capture-flash {
+    animation: capture-flash 260ms ease-out;
+}
+
 .board img {
     width: 78%;
     height: 78%;
     pointer-events: none;
     user-select: none;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 4px rgba(255, 255, 255, 0.35));
+    transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+.board div:hover img {
+    transform: scale(1.06);
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 6px rgba(255, 255, 255, 0.45));
+}
+
+.piece-move {
+    animation: piece-pop 180ms ease-out;
+}
+
+@keyframes piece-pop {
+    0% {
+        transform: scale(0.92);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes capture-flash {
+    0% {
+        box-shadow: inset 0 0 0 0 rgba(199, 167, 108, 0.0);
+    }
+    35% {
+        box-shadow: inset 0 0 0 6px rgba(199, 167, 108, 0.6);
+    }
+    100% {
+        box-shadow: inset 0 0 0 0 rgba(199, 167, 108, 0.0);
+    }
 }
 
 .captured {
     display: flex;
     flex-wrap: wrap;
-    min-height: 70px;
-    padding: 10px 14px;
+    width: 100%;
+    min-height: 56px;
+    padding: 8px 12px;
     gap: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 12px;
-    background: rgba(20, 24, 23, 0.65);
+    background: linear-gradient(135deg, rgba(245, 236, 214, 0.85), rgba(220, 205, 170, 0.75));
 }
 
 .captured img {
-    width: 38px;
-    height: 38px;
-    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+    width: 32px;
+    height: 32px;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
 }
 
 @media (max-width: 720px) {
@@ -272,13 +329,7 @@ h1 {
         justify-content: space-between;
     }
 
-    .clock-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .status,
-    .note {
-        text-align: left;
+    .arena {
+        grid-template-columns: 1fr;
     }
 }

@@ -21,6 +21,7 @@ let gameActive = false;
 let timerId = null;
 let whiteTime = 300;
 let blackTime = 300;
+let audioContext = null;
 
 const typeMap = { p: "pawn", r: "rook", n: "knight", b: "bishop", q: "queen", k: "king" };
 
@@ -57,12 +58,13 @@ function updateStatus(message) {
 
 function clearHighlights() {
   squares.forEach(square => {
-    square.classList.remove("highlight", "move-target", "last-move");
+    square.classList.remove("highlight", "move-target", "last-move", "capture-flash");
   });
 }
 
 function renderBoard() {
   const boardState = chess.board();
+  const lastToIndex = lastMove ? squareToIndex(lastMove.to) : null;
 
   squares.forEach((square, i) => {
     square.innerHTML = "";
@@ -77,6 +79,7 @@ function renderBoard() {
       img.src = `./images/${color}-${type}.png`;
       img.alt = `${color} ${type}`;
       img.draggable = false;
+      if (lastToIndex === i) img.classList.add("piece-move");
       square.appendChild(img);
     }
   });
@@ -109,6 +112,41 @@ function renderBoard() {
     squares[fromIndex].classList.add("last-move");
     squares[toIndex].classList.add("last-move");
   }
+}
+
+function flashCaptureSquare(index) {
+  const square = squares[index];
+  square.classList.add("capture-flash");
+  setTimeout(() => square.classList.remove("capture-flash"), 280);
+}
+
+function playCaptureSound() {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  const now = audioContext.currentTime;
+  const master = audioContext.createGain();
+  master.gain.setValueAtTime(0.0001, now);
+  master.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+  master.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+  master.connect(audioContext.destination);
+
+  const notes = [392, 523.25, 659.25];
+  notes.forEach((freq, index) => {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const start = now + index * 0.03;
+    osc.type = index === 1 ? "sine" : "triangle";
+    osc.frequency.setValueAtTime(freq, start);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.12, start + 0.12);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.18, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+    osc.connect(gain).connect(master);
+    osc.start(start);
+    osc.stop(start + 0.25);
+  });
 }
 
 function highlightMoves(fromSquare) {
@@ -200,6 +238,10 @@ function handleClick(index) {
   clearHighlights();
   if (move) {
     lastMove = move;
+    if (move.captured) {
+      flashCaptureSquare(squareToIndex(move.to));
+      playCaptureSound();
+    }
     renderBoard();
     updateTurnStatus();
   }
