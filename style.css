@@ -11,6 +11,7 @@
     --ink: #f7f3ea;
     --muted: #bfb6a1;
     --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    --board-size: clamp(280px, 70vmin, 620px);
 }
 
 * {
@@ -31,14 +32,14 @@ body {
     color: var(--ink);
     font-family: "IBM Plex Sans", system-ui, sans-serif;
     padding: 16px 16px;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .stage {
     width: min(980px, 100%);
     display: grid;
     gap: 14px;
-    max-height: calc(100vh - 32px);
 }
 
 .topbar {
@@ -216,12 +217,14 @@ h1 {
     box-shadow: var(--shadow);
     border: 1px solid rgba(255, 255, 255, 0.08);
     display: grid;
-    grid-template-columns: 180px 1fr 220px;
+    grid-template-columns: minmax(180px, 220px) minmax(320px, 1fr) minmax(200px, 240px);
+    grid-template-areas: "left board right";
     gap: 16px;
     align-items: center;
 }
 
 .side-panel {
+    grid-area: left;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -289,10 +292,13 @@ h1 {
     display: grid;
     gap: 12px;
     justify-items: center;
-    width: min(66vh, 90vw);
+    width: min(var(--board-size), 100%);
+    justify-self: center;
+    grid-area: board;
 }
 
 .right-panel {
+    grid-area: right;
     display: grid;
     gap: 12px;
     align-content: start;
@@ -367,10 +373,11 @@ h1 {
 .board {
     display: flex;
     flex-wrap: wrap;
-    width: min(66vh, 90vw);
-    height: min(66vh, 90vw);
-    border: 16px solid #2e2217;
-    border-radius: 18px;
+    width: min(var(--board-size), 100%);
+    aspect-ratio: 1 / 1;
+    height: auto;
+    border: clamp(8px, 2.4vmin, 16px) solid #2e2217;
+    border-radius: clamp(12px, 2.6vmin, 18px);
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.1);
     margin: 0 auto;
 }
@@ -458,7 +465,7 @@ h1 {
     display: flex;
     flex-wrap: wrap;
     width: 100%;
-    min-height: 56px;
+    min-height: clamp(44px, 8vmin, 56px);
     padding: 8px 12px;
     gap: 8px;
     border: 1px solid rgba(255, 255, 255, 0.18);
@@ -467,9 +474,88 @@ h1 {
 }
 
 .captured img {
-    width: 32px;
-    height: 32px;
+    width: clamp(22px, 5vmin, 32px);
+    height: clamp(22px, 5vmin, 32px);
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
+}
+
+@media (max-width: 1280px) {
+    :root {
+        --board-size: clamp(420px, 56vw, 620px);
+    }
+
+    .arena {
+        grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+        grid-template-areas:
+            "left board"
+            "right right";
+        align-items: start;
+    }
+
+    .right-panel {
+        width: 100%;
+    }
+}
+
+@media (max-width: 1024px) {
+    :root {
+        --board-size: clamp(360px, 72vw, 560px);
+    }
+}
+
+@media (max-width: 860px) {
+    .arena {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "black"
+            "board"
+            "white"
+            "status"
+            "right";
+    }
+
+    .side-panel {
+        display: contents;
+    }
+
+    .player-card.black {
+        grid-area: black;
+    }
+
+    .player-card.white {
+        grid-area: white;
+    }
+
+    .mid-info {
+        grid-area: status;
+    }
+
+    .player-card {
+        width: min(240px, 100%);
+        justify-self: center;
+        padding: 8px 12px;
+        border-radius: 10px;
+        gap: 4px;
+        min-width: 0;
+    }
+
+    .label {
+        font-size: 10px;
+        letter-spacing: 0.14em;
+    }
+
+    .clock {
+        font-size: 18px;
+        letter-spacing: 0.04em;
+    }
+
+    .status {
+        font-size: 13px;
+    }
+
+    .note {
+        font-size: 11px;
+    }
 }
 
 @media (max-width: 720px) {
@@ -480,10 +566,49 @@ h1 {
 
     .controls {
         width: 100%;
-        justify-content: space-between;
+        justify-content: flex-start;
+        gap: 10px;
+    }
+
+    .btn {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+
+    .time-control {
+        padding: 6px 10px;
+    }
+
+    .clock {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 520px) {
+    body {
+        padding: 12px;
     }
 
     .arena {
-        grid-template-columns: 1fr;
+        padding: 12px;
+        border-radius: 18px;
+    }
+
+    .topbar {
+        padding: 10px 14px;
+    }
+
+    .label {
+        font-size: 9px;
+        letter-spacing: 0.12em;
+    }
+
+    .clock {
+        font-size: 16px;
+    }
+
+    .player-card {
+        width: min(210px, 100%);
+        padding: 7px 10px;
     }
 }
